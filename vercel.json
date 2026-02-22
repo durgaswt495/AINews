@@ -1,0 +1,25 @@
+{
+  "functions": {
+    "api/fetch-news.ts": {
+      "memory": 1024,
+      "maxDuration": 120
+    },
+    "api/webhook.ts": {
+      "memory": 512,
+      "maxDuration": 30
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/fetch-news",
+      "schedule": "0 */6 * * *"
+    }
+  ],
+  "env": {
+    "TELEGRAM_BOT_TOKEN": "@telegram_bot_token",
+    "TELEGRAM_CHAT_ID": "@telegram_chat_id",
+    "HF_TOKEN": "@hf_token",
+    "VERCEL_KV_URL": "@vercel_kv_url",
+    "VERCEL_KV_REST_API_TOKEN": "@vercel_kv_rest_api_token"
+  }
+}

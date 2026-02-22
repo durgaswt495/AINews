@@ -1,0 +1,251 @@
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  TECH NEWS TELEGRAM BOT - COMPLETE PROJECT ✅                  │
+│  Serverless Node.js App for Vercel (Free Tier)                 │
+└─────────────────────────────────────────────────────────────────┘
+
+📦 NewsApp/
+│
+├─ 📋 Configuration & Setup
+│  ├─ package.json              (Dependencies & scripts)
+│  ├─ tsconfig.json             (TypeScript config)
+│  ├─ vercel.json               (Vercel config + cron every 6h)
+│  ├─ .env.local                (Local secrets template)
+│  └─ .gitignore               (Exclude secrets from Git)
+│
+├─ 🌐 API Routes (Serverless Functions on Vercel)
+│  └─ api/
+│     ├─ fetch-news.ts          ⭐ MAIN FUNCTION
+│     │  ├─ Fetch 14+ RSS feeds
+│     │  ├─ Process with HF AI (summarize, sentiment, topic)
+│     │  ├─ Check KV for duplicates
+│     │  ├─ Store new articles (7-day expiration)
+│     │  ├─ Send batch to Telegram
+│     │  └─ Handle errors
+│     │
+│     └─ webhook.ts             (Telegram bot commands)
+│        ├─ Handle /start
+│        ├─ Handle /help
+│        ├─ Handle /stats
+│        └─ Future: interactive features
+│
+├─ 🛠 Utility Libraries (Reusable Code)
+│  └─ lib/
+│     ├─ huggingface-client.ts   (AI Processing)
+│     │  ├─ summarizeText(text)
+│     │  │  └─ BART model: 130 token summaries
+│     │  │
+│     │  ├─ analyzeSentiment(text)
+│     │  │  └─ DistilBERT: positive/negative/neutral
+│     │  │
+│     │  ├─ classifyTopic(text)
+│     │  │  └─ Zero-shot: 11 categories
+│     │  │
+│     │  └─ processArticle(title,content)
+│     │     └─ Orchestrates all 3 above
+│     │
+│     ├─ telegram-service.ts     (Bot Integration)
+│     │  ├─ sendNewsToTelegram(news[])
+│     │  │  ├─ Format with emojis & markdown
+│     │  │  ├─ 500ms delay between messages
+│     │  │  └─ Send sentiment stats
+│     │  │
+│     │  └─ sendErrorAlert(message)
+│     │     └─ Send alerts on failures
+│     │
+│     ├─ news-sources.ts         (Data: RSS Feeds)
+│     │  └─ 14 sources:
+│     │     ├─ TechCrunch
+│     │     ├─ Hacker News
+│     │     ├─ Dev.to
+│     │     ├─ Medium
+│     │     ├─ CSS-Tricks
+│     │     ├─ Smashing Mag
+│     │     ├─ OpenAI Blog
+│     │     ├─ Cloudflare Blog
+│     │     ├─ GitHub Blog
+│     │     ├─ VentureBeat
+│     │     ├─ Mozilla Blog
+│     │     ├─ A List Apart
+│     │     ├─ David Walsh
+│     │     └─ + more...
+│     │
+│     └─ vercel-kv.ts            (Database: Article Storage)
+│        ├─ articleExists(title, source)
+│        ├─ storeArticle(article)
+│        ├─ getArticle(title, source)
+│        ├─ deleteArticle(title, source)
+│        ├─ getAllArticles()
+│        └─ clearAllArticles()
+│
+├─ 📚 Documentation
+│  ├─ README.md                  (Complete project guide)
+│  ├─ SETUP.md                   (Step-by-step deployment)
+│  ├─ SUMMARY.md                 (Project overview)
+│  ├─ QUICK_START.md             (5-step quick deploy)
+│  └─ This file                  (Visual structure)
+│
+├─ 📦 Generated After Build
+│  ├─ node_modules/              (npm packages, ~300 packages)
+│  ├─ dist/                       (Compiled JS from TS)
+│  ├─ package-lock.json          (Dependency lock)
+│  └─ .vercel/                   (Vercel metadata)
+│
+└─ 🔐 Secrets (in .env.local, NOT in Git)
+   ├─ TELEGRAM_BOT_TOKEN         (From @BotFather)
+   ├─ TELEGRAM_CHAT_ID           (Your chat ID)
+   ├─ HF_TOKEN                   (Hugging Face API)
+   ├─ VERCEL_KV_URL              (Redis connection)
+   └─ VERCEL_KV_REST_API_TOKEN   (KV database token)
+
+
+═══════════════════════════════════════════════════════════════════
+
+🔄 EXECUTION FLOW (Every 6 Hours)
+
+1. Vercel Cron Scheduler triggers
+   ↓
+2. api/fetch-news.ts handler executes
+   ├─ Load news sources (lib/news-sources.ts)
+   ├─ Fetch from 14 RSS feeds in parallel
+   │  └─ rss-parser package parses feeds
+   ├─ Iterate each article:
+   │  ├─ Check KV store (lib/vercel-kv.ts)
+   │  │  └─ articleExists(title, source)?
+   │  ├─ If new:
+   │  │  ├─ Process with HF (lib/huggingface-client.ts)
+   │  │  │  ├─ Summarize (facebook/bart-large-cnn)
+   │  │  │  ├─ Analyze sentiment (distilbert)
+   │  │  │  └─ Classify topic (bart-large-mnli)
+   │  │  │
+   │  │  └─ Store in KV (7-day expiration)
+   │  │
+   │  └─ If duplicate: skip
+   │
+   ├─ Collect all new articles
+   └─ Send to Telegram (lib/telegram-service.ts)
+      ├─ Send header message
+      ├─ For each article:
+      │  ├─ Format with emoji markers
+      │  ├─ Include summary + sentiment + topic
+      │  └─ Send with 500ms delay
+      └─ Send sentiment stats summary
+
+
+═══════════════════════════════════════════════════════════════════
+
+📊 SAMPLE TELEGRAM MESSAGE
+
+📰 Tech News Update (2/22/2026)
+Found 3 new articles from your tech feeds.
+
+*GPT-4 Turbo Now Available*
+
+_OpenAI Blog_
+📌 Artificial Intelligence 🟢
+
+*Summary:*
+OpenAI releases GPT-4 Turbo with improved 
+performance and shorter training times. New 
+model shows 2x faster inference speeds.
+
+[Read Full Article](https://openai.com/blog/...)
+
+*Vercel Announces Edge Functions*
+
+_Vercel Blog_
+📌 Cloud Computing 🟢
+
+*Summary:*
+Vercel's new Edge Functions enable faster 
+execution at edge locations worldwide. Beta
+available for all tier users.
+
+[Read Full Article](https://vercel.com/...)
+
+---
+
+*Today's Sentiment Analysis:*
+🟢 Positive: 2
+🔴 Negative: 0
+🟡 Neutral: 1
+
+
+═══════════════════════════════════════════════════════════════════
+
+🏛 DEPLOYMENT ARCHITECTURE
+
+┌────────────────────────────────────────────────────────┐
+│                  YOUR GITHUB REPO                      │
+│         (NewsApp source code + config)                 │
+└────────────────────────────────────────────────────────┘
+                          ↓
+                    [Git Push]
+                          ↓
+┌────────────────────────────────────────────────────────┐
+│              VERCEL (Free Tier)                        │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Serverless Functions (api/*.ts)                  │  │
+│  │ • fetch-news.ts (runs every 6h via cron)        │  │
+│  │ • webhook.ts (optional telegram handler)        │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Vercel KV (Redis-compatible database)           │  │
+│  │ • Store article deduplication hashes            │  │
+│  │ • 7-day expiration per article                  │  │
+│  │ • 10K requests/day free tier                    │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Environment Variables (Secrets)                 │  │
+│  │ • TELEGRAM_BOT_TOKEN                            │  │
+│  │ • TELEGRAM_CHAT_ID                              │  │
+│  │ • HF_TOKEN                                      │  │
+│  │ • VERCEL_KV_URL + TOKEN                         │  │
+│  └──────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
+         ↙              ↓              ↘
+        /               |               \
+    [RSS]           [HF API]         [Telegram]
+    Feeds          Free Tier         Bot API
+     (14)          Models            (Free)
+   Sources       • Summarize
+   TechCrunch    • Sentiment
+   Hacker News   • Topic
+   Dev.to          Classification
+   Medium
+   + 10 more
+
+
+═══════════════════════════════════════════════════════════════════
+
+📋 DEPENDENCY TREE
+
+tech-news-telegram-bot
+├─ Production
+│  ├─ telegraf 4.16.3           (Telegram bot framework)
+│  ├─ @huggingface/inference    (HF AI models API)
+│  ├─ rss-parser 3.13.0         (RSS/Atom parser)
+│  ├─ axios 1.7.2               (HTTP client)
+│  ├─ cheerio 1.2.0             (HTML parsing)
+│  └─ dotenv 16.4.5             (Env var loading)
+│
+└─ Development
+   ├─ typescript 5.3.3          (Type checking)
+   ├─ @types/node 20.11.5       (Node.js types)
+   └─ vercel 34.2.3             (Vercel CLI)
+
+Total: 14 direct dependencies + 300+ transitive
+
+
+═══════════════════════════════════════════════════════════════════
+
+✅ READY TO DEPLOY!
+
+Next steps: See QUICK_START.md for 5-step deployment guide
+
+Your bot will be live in ~15 minutes and fully autonomous.
+Receive tech news summaries every 6 hours, every day, forever.
+Cost: $0/month ✅
+
+═══════════════════════════════════════════════════════════════════
+```
