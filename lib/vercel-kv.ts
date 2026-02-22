@@ -6,12 +6,15 @@ interface KVConfig {
   token: string;
 }
 
-const getKVConfig = (): KVConfig => {
+// In-memory fallback store when Vercel KV is not configured or unreachable
+const inMemoryStore = new Map<string, StoredArticle>();
+
+const getKVConfig = (): KVConfig | null => {
   const url = process.env.VERCEL_KV_URL;
   const token = process.env.VERCEL_KV_REST_API_TOKEN;
 
   if (!url || !token) {
-    throw new Error("Vercel KV environment variables not configured");
+    return null;
   }
 
   return { url, token };
@@ -50,6 +53,11 @@ export async function articleExists(
     const config = getKVConfig();
     const articleId = generateArticleId(title, source);
 
+    if (!config) {
+      // Fallback to in-memory store
+      return inMemoryStore.has(articleId);
+    }
+
     const response = await axios.get(
       `${config.url}/get/${articleId}`,
       {
@@ -78,24 +86,36 @@ export async function storeArticle(article: StoredArticle): Promise<void> {
     const config = getKVConfig();
     const ttl = 7 * 24 * 60 * 60; // 7 days in seconds
 
-    await axios.post(
-      `${config.url}/set/${article.id}`,
-      JSON.stringify(article),
-      {
-        headers: {
-          Authorization: `Bearer ${config.token}`,
-          "Content-Type": "application/json",
-        },
-        params: {
-          ex: ttl, // Set expiration time
-        },
-      }
-    );
+    if (!config) {
+      // Fallback to in-memory store
+      inMemoryStore.set(article.id, article);
+      console.log(`Stored article in memory: ${article.id}`);
+      return;
+    }
 
-    console.log(`Stored article: ${article.id}`);
+    try {
+      await axios.post(
+        `${config.url}/set/${article.id}`,
+        JSON.stringify(article),
+        {
+          headers: {
+            Authorization: `Bearer ${config.token}`,
+            "Content-Type": "application/json",
+          },
+          params: {
+            ex: ttl, // Set expiration time
+          },
+        }
+      );
+
+      console.log(`Stored article: ${article.id}`);
+    } catch (kvError) {
+      console.error("KV store failed, falling back to in-memory store:", kvError);
+      inMemoryStore.set(article.id, article);
+      console.log(`Stored article in memory: ${article.id}`);
+    }
   } catch (error) {
-    console.error("Error storing article in KV:", error);
-    throw error;
+    console.error("Unexpected error storing article:", error);
   }
 }
 
@@ -109,6 +129,10 @@ export async function getArticle(
   try {
     const config = getKVConfig();
     const articleId = generateArticleId(title, source);
+
+    if (!config) {
+      return inMemoryStore.get(articleId) || null;
+    }
 
     const response = await axios.get(
       `${config.url}/get/${articleId}`,
@@ -140,6 +164,12 @@ export async function deleteArticle(
     const config = getKVConfig();
     const articleId = generateArticleId(title, source);
 
+    if (!config) {
+      inMemoryStore.delete(articleId);
+      console.log(`Deleted article from memory: ${articleId}`);
+      return;
+    }
+
     await axios.delete(
       `${config.url}/del/${articleId}`,
       {
@@ -163,6 +193,10 @@ export async function getAllArticles(
 ): Promise<StoredArticle[]> {
   try {
     const config = getKVConfig();
+
+    if (!config) {
+      return Array.from(inMemoryStore.values());
+    }
 
     const response = await axios.get(
       `${config.url}/keys/${pattern}`,
@@ -196,6 +230,14 @@ export async function getAllArticles(
 export async function clearAllArticles(): Promise<void> {
   try {
     const config = getKVConfig();
+
+    if (!config) {
+      const count = inMemoryStore.size;
+      inMemoryStore.clear();
+      console.log(`Cleared ${count} articles from in-memory store`);
+      return;
+    }
+
     const response = await axios.get(
       `${config.url}/keys/*`,
       {

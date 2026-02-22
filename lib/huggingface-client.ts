@@ -20,10 +20,38 @@ async function summarizeText(text: string): Promise<string> {
       },
     });
 
-    return result[0]?.summary_text || "Failed to generate summary";
+    // Handle different provider response formats
+    if (!result) {
+      throw new Error("Empty summarization result");
+    }
+
+    // If provider returns an array of objects with `summary_text`
+    if (Array.isArray(result) && result.length > 0) {
+      const first = result[0];
+      if (typeof first === "string") return first;
+      if (first.summary_text) return first.summary_text;
+    }
+
+    // If provider returns a string
+    if (typeof result === "string") return result;
+
+    // If provider returns an object with `summary_text`
+    if (result.summary_text) return result.summary_text;
+
+    throw new Error("Unsupported summarization result format");
   } catch (error) {
-    console.error("Summarization error:", error);
-    throw new Error("Failed to summarize article");
+    console.error("Summarization error, falling back to extractive summary:", error);
+
+    // Fallback: simple extractive summary (first 2 sentences)
+    try {
+      const sentences = text
+        .replace(/\n+/g, " ")
+        .split(/(?<=[.!?])\s+/)
+        .filter(Boolean);
+      return sentences.slice(0, 2).join(" ").trim() || text.substring(0, 200);
+    } catch (e) {
+      return text.substring(0, 200);
+    }
   }
 }
 
