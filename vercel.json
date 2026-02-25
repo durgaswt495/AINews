@@ -1,4 +1,5 @@
 {
+  "buildCommand": null,
   "functions": {
     "api/fetch-news.ts": {
       "memory": 1024,
