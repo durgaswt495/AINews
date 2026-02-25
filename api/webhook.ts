@@ -151,10 +151,38 @@ export default async (
   try {
     // Handle Telegram webhook
     if (req.method === "POST") {
-      const update: Update = req.body;
+      console.log("Webhook POST received at", new Date().toISOString());
 
+      // Mask and log headers (avoid printing secrets)
+      const headersToLog: Record<string, string | undefined> = {};
+      for (const [k, v] of Object.entries(req.headers || {})) {
+        const key = k.toLowerCase();
+        if (["authorization", "cookie", "set-cookie", "x-hf-token", "hf_token"].includes(key)) {
+          headersToLog[key] = "[REDACTED]";
+        } else {
+          headersToLog[key] = v as string;
+        }
+      }
+      console.log("Webhook headers:", headersToLog);
+
+      // Safely stringify and truncate body for logs
+      let bodyStr = "";
+      try {
+        bodyStr = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+      } catch (e) {
+        bodyStr = String(req.body);
+      }
+      const truncated = bodyStr.length > 1024 ? bodyStr.slice(0, 1024) + "...[truncated]" : bodyStr;
+      console.log("Webhook body (truncated):", truncated);
+
+      const update: Update = req.body;
       if (update) {
-        await bot.handleUpdate(update);
+        try {
+          await bot.handleUpdate(update);
+        } catch (err) {
+          console.error("bot.handleUpdate error:", err);
+          return res.status(500).json({ ok: false, error: String(err) });
+        }
       }
 
       return res.status(200).json({ ok: true });
