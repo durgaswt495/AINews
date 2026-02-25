@@ -14,5 +14,7 @@
       "path": "/api/fetch-news",
       "schedule": "0 0 * * *"
     }
-  ]
+  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
 }
