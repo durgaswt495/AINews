@@ -1,5 +1,6 @@
 {
-  "buildCommand": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "functions": {
     "api/fetch-news.ts": {
       "memory": 1024,
@@ -15,5 +16,12 @@
       "path": "/api/fetch-news",
       "schedule": "0 0 * * *"
     }
+  ],
+  "env": [
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "HF_TOKEN",
+    "VERCEL_KV_URL",
+    "VERCEL_KV_REST_API_TOKEN"
   ]
 }
