@@ -1,4 +1,5 @@
 import { Telegraf } from "telegraf";
+import type { LanguageCode } from "./language-service.js";
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || "");
 
@@ -10,6 +11,7 @@ export interface NewsMessage {
   topic: string;
   source: string;
   pubDate?: string;
+  language: LanguageCode;
 }
 
 const sentimentEmoji = {
@@ -18,28 +20,43 @@ const sentimentEmoji = {
   neutral: "🟡",
 };
 
-export async function sendNewsToTelegram(news: NewsMessage[]): Promise<void> {
+export async function sendNewsToTelegram(
+  news: NewsMessage[],
+  userLanguage?: string
+): Promise<void> {
   if (!process.env.TELEGRAM_CHAT_ID) {
     throw new Error("TELEGRAM_CHAT_ID not set");
   }
 
-  if (news.length === 0) {
-    console.log("No news articles to send");
+  // Filter news by user language if specified
+  const filteredNews =
+    userLanguage && userLanguage !== "all"
+      ? news.filter((article) => article.language === userLanguage)
+      : news;
+
+  if (filteredNews.length === 0) {
+    console.log(
+      `No articles found in user's language (${userLanguage}). Total available: ${news.length}`
+    );
     return;
   }
 
   try {
     // Send header message
+    const languageInfo =
+      userLanguage && userLanguage !== "all"
+        ? ` (${userLanguage.toUpperCase()})`
+        : "";
     const header =
-      `📰 *Tech News Update* (${new Date().toLocaleDateString()})\n\n` +
-      `Found ${news.length} new articles from your tech feeds.\n\n`;
+      `📰 *Tech News Update* 🇮🇳 (${new Date().toLocaleDateString()})${languageInfo}\n\n` +
+      `Found ${filteredNews.length} new articles from your tech feeds.\n\n`;
 
     await bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, header, {
       parse_mode: "Markdown",
     });
 
     // Send each article as a separate message to avoid length limits
-    for (const article of news) {
+    for (const article of filteredNews) {
       const emoji = sentimentEmoji[article.sentiment];
       const message =
         `*${article.title}*\n\n` +
@@ -58,13 +75,13 @@ export async function sendNewsToTelegram(news: NewsMessage[]): Promise<void> {
     }
 
     // Send footer message with stats
-    const positiveCount = news.filter(
+    const positiveCount = filteredNews.filter(
       (n) => n.sentiment === "positive"
     ).length;
-    const negativeCount = news.filter(
+    const negativeCount = filteredNews.filter(
       (n) => n.sentiment === "negative"
     ).length;
-    const neutralCount = news.filter((n) => n.sentiment === "neutral").length;
+    const neutralCount = filteredNews.filter((n) => n.sentiment === "neutral").length;
 
     const footer =
       `*Today's Sentiment Analysis:*\n` +
@@ -76,7 +93,7 @@ export async function sendNewsToTelegram(news: NewsMessage[]): Promise<void> {
       parse_mode: "Markdown",
     });
 
-    console.log(`Successfully sent ${news.length} articles to Telegram`);
+    console.log(`Successfully sent ${filteredNews.length} articles to Telegram`);
   } catch (error) {
     console.error("Error sending message to Telegram:", error);
     throw error;

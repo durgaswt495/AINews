@@ -1,21 +1,39 @@
 # Tech News Telegram Bot
 
-A serverless Node.js application that aggregates tech news from multiple RSS feeds, processes them using free Hugging Face AI models, and sends curated summaries to Telegram every 6 hours.
+A serverless Node.js application that aggregates tech news from multiple RSS feeds, **automatically detects article language**, and sends curated summaries to Telegram in your preferred language every 6 hours.
 
 ## Features
 
+🇮🇳 **10 Indian Languages**: Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Odia, Punjabi
+
+🌍 **6 International Languages**: English, Spanish, French, German, Chinese, Japanese
+
+🤖 **Automatic Language Detection**: Detects language of each article using AI
+
 ✨ **News Aggregation**: Fetches from 14+ tech news sources (TechCrunch, Hacker News, Dev.to, etc.)
 
-🤖 **AI Processing**: Uses free Hugging Face models for:
+📊 **AI Processing**: Uses free Hugging Face models for:
 - Text summarization (BART)
 - Sentiment analysis (DistilBERT)
 - Topic classification (Zero-shot)
+- Language detection (Multilingual model)
 
-📱 **Telegram Integration**: Sends formatted news summaries with sentiment indicators
+📱 **Telegram Integration**: Sends formatted news summaries with sentiment indicators & language filtering
+
+👤 **User Preferences**: Save your language preference and get updates in YOUR language
 
 💾 **Deduplication**: Uses Vercel KV (Redis) to prevent duplicate articles
 
 ⚙️ **Serverless**: Runs on Vercel free tier with cron jobs every 6 hours
+
+## Quick Start
+
+1. Open Telegram bot
+2. Send `/lang` to choose your language
+3. Send `/hi` (or `/ta`, `/bn`, etc.) to select
+4. Receive tech news in your language every 6 hours!
+
+See [INDIAN_LANGUAGES.md](./INDIAN_LANGUAGES.md) for detailed language support guide.
 
 ## Prerequisites
 

@@ -265,3 +265,99 @@ export async function clearAllArticles(): Promise<void> {
     console.error("Error clearing KV store:", error);
   }
 }
+
+/**
+ * Store user language preference
+ */
+export async function setUserLanguage(
+  userId: string,
+  language: string
+): Promise<void> {
+  try {
+    const config = getKVConfig();
+    const key = `user_lang:${userId}`;
+    const ttl = 365 * 24 * 60 * 60; // 1 year
+
+    if (!config) {
+      // Fallback to in-memory store
+      inMemoryStore.set(key, {
+        id: key,
+        title: language,
+        link: "",
+        source: "user_preference",
+        pubDate: new Date().toISOString(),
+        summary: "",
+        sentiment: "neutral",
+        topic: "preference",
+        processedAt: new Date().toISOString(),
+      } as StoredArticle);
+      console.log(`Stored user language preference in memory: ${userId} -> ${language}`);
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${config.url}/set/${key}?ex=${ttl}`,
+        JSON.stringify({ userId, language, setAt: new Date().toISOString() }),
+        {
+          headers: {
+            Authorization: `Bearer ${config.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log(`Stored user language preference: ${userId} -> ${language}`);
+    } catch (kvError) {
+      // Fallback to in-memory if KV fails
+      inMemoryStore.set(key, {
+        id: key,
+        title: language,
+        link: "",
+        source: "user_preference",
+        pubDate: new Date().toISOString(),
+        summary: "",
+        sentiment: "neutral",
+        topic: "preference",
+        processedAt: new Date().toISOString(),
+      } as StoredArticle);
+      console.log(`Fallback: Stored user language preference in memory: ${userId} -> ${language}`);
+    }
+  } catch (error) {
+    console.error("Error storing user language preference:", error);
+  }
+}
+
+/**
+ * Get user language preference (defaults to 'en')
+ */
+export async function getUserLanguage(userId: string): Promise<string> {
+  try {
+    const config = getKVConfig();
+    const key = `user_lang:${userId}`;
+
+    if (!config) {
+      // Fallback to in-memory store
+      const stored = inMemoryStore.get(key);
+      return stored ? (stored.title as string) : "en";
+    }
+
+    const response = await axios.get(`${config.url}/get/${key}`, {
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+      },
+    });
+
+    if (response.data.result) {
+      const parsed = JSON.parse(response.data.result);
+      return parsed.language || "en";
+    }
+
+    return "en";
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return "en"; // Default language if not set
+    }
+    console.error("Error retrieving user language preference:", error);
+    return "en"; // Default to English on error
+  }
+}

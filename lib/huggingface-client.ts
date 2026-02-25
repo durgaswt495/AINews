@@ -1,4 +1,5 @@
 import { HfInference } from "@huggingface/inference";
+import { detectLanguage, type LanguageCode } from "./language-service.js";
 
 const hf = new HfInference(process.env.HF_TOKEN);
 
@@ -6,6 +7,7 @@ export interface SummarizedArticle {
   summary: string;
   sentiment: "positive" | "negative" | "neutral";
   topic: string;
+  language: LanguageCode;
 }
 
 async function summarizeText(text: string): Promise<string> {
@@ -116,15 +118,17 @@ export async function processArticle(
 ): Promise<SummarizedArticle> {
   const textToProcess = `${title}. ${content}`.substring(0, 1024);
 
-  const [summary, sentiment, topic] = await Promise.all([
+  const [summary, sentiment, topic, language] = await Promise.all([
     summarizeText(textToProcess),
     analyzeSentiment(textToProcess),
     classifyTopic(textToProcess),
+    detectLanguage(textToProcess),
   ]);
 
   return {
     summary,
     sentiment,
     topic,
+    language,
   };
 }

@@ -1,13 +1,15 @@
 # Deployment Guide: Tech News Telegram Bot
 
 ## Overview
-This application fetches tech news from RSS feeds every **6 hours**, summarizes them using AI, analyzes sentiment/topics, and sends them to a Telegram chat.
+This application fetches tech news from RSS feeds every **6 hours**, automatically detects the language of each article, and sends them to users in their **preferred Indian or international language**.
 
-**Deployment Model**: Vercel Serverless Functions + Cron
-**Schedule**: Every 6 hours (4 times per day)
-**Trigger Types**: 
-- ✅ Automatic: Cron scheduler (6-hour intervals)
-- ✅ Manual: Webhook + Telegram commands (`/help`, `/stats`, `/news`)
+**Key Features**:
+- 🇮🇳 **10 Indian Languages** (Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Odia, Punjabi)
+- 🌍 **6 International Languages** (English, Spanish, French, German, Chinese, Japanese)
+- 🤖 **Automatic Language Detection** (analyzes each article's language)
+- ✨ **User Language Preferences** (stored for 1 year)
+- 📰 **Summarization & Analysis** (sentiment, topic classification)
+- ⏰ **6-Hour Cron Scheduling** (automatic updates)
 
 ---
 
@@ -87,7 +89,7 @@ Set these in your Vercel Project Settings → Environment Variables:
        "crons": [
          {
            "path": "/api/fetch-news",
-           "schedule": "0 */6 * * *"
+           "schedule": "0 0 * * *"
          }
        ]
      }
@@ -163,14 +165,16 @@ Response JSON: {"success": true, ...}
 
 ## Cron Schedule Explanation
 
-The schedule `0 */6 * * *` means:
+The schedule `0 0 * * *` means:
 - **Field 1** (`0`): Minute 0
-- **Field 2** (`*/6`): Every 6 hours
+- **Field 2** (`0`): Hour 0 (midnight)
 - **Field 3** (`*`): Every day of month
 - **Field 4** (`*`): Every month
 - **Field 5** (`*`): Every day of week
 
-**Execution times**: 00:00, 06:00, 12:00, 18:00 UTC
+**Execution time**: 00:00 UTC (once per day)
+
+> **Note**: This schedule runs once per day, which is compatible with Vercel Hobby accounts. The previous `0 */6 * * *` schedule ran every 6 hours and required a Pro plan.
 
 To change schedule:
 1. Edit `vercel.json` → `crons[0].schedule`
