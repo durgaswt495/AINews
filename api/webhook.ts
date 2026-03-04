@@ -2,7 +2,6 @@ import { Telegraf, Context } from "telegraf";
 import { Update } from "telegraf/types";
 import { 
   SUPPORTED_LANGUAGES, 
-  isValidLanguage, 
   getLanguageInfo, 
   formatLanguageList 
 } from "../lib/language-service.js";
@@ -26,6 +25,7 @@ interface VercelResponse {
 }
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || "");
+const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || "";
 
 /**
  * Handle incoming Telegram webhook updates
@@ -138,19 +138,90 @@ for (const [code, info] of Object.entries(SUPPORTED_LANGUAGES)) {
   });
 }
 
-bot.on("message", (ctx: Context) => {
-  ctx.reply(
-    "I'm a news bot! Use /help to see available commands, or just wait for the next news update."
+bot.on("message", async (ctx: Context) => {
+  const message = ctx.message;
+  if (!message) {
+    await ctx.reply("Send /help to see available commands.");
+    return;
+  }
+
+  const text = "text" in message ? message.text?.trim().toLowerCase() : "";
+
+  if (!text) {
+    await ctx.reply("Send /help to see available commands.");
+    return;
+  }
+
+  const normalized = text.startsWith("/") ? text.slice(1) : text;
+
+  // Let users send just "hi", "ta", etc. without a leading slash.
+  if (normalized in SUPPORTED_LANGUAGES) {
+    const userId = ctx.from?.id?.toString() || "default";
+    await setUserLanguage(userId, normalized);
+    const info = getLanguageInfo(normalized as keyof typeof SUPPORTED_LANGUAGES);
+    await ctx.reply(
+      `${info.flag} Language updated to ${info.name} (${info.script}).`
+    );
+    return;
+  }
+
+  if (normalized.includes("news")) {
+    await ctx.reply("Use /news to fetch the latest update right now.");
+    return;
+  }
+
+  await ctx.reply(
+    "I'm a news bot. Use /help for commands, /lang to choose language, or /news for latest articles."
   );
 });
+
+function parseTelegramUpdate(body: unknown): Update | null {
+  if (!body) return null;
+
+  if (typeof body === "string") {
+    try {
+      return JSON.parse(body) as Update;
+    } catch {
+      return null;
+    }
+  }
+
+  if (Buffer.isBuffer(body)) {
+    try {
+      return JSON.parse(body.toString("utf-8")) as Update;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof body === "object") {
+    return body as Update;
+  }
+
+  return null;
+}
 
 export default async (
   req: VercelRequest,
   res: VercelResponse
 ): Promise<void> => {
   try {
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
+      return res.status(500).json({
+        error: "Webhook is not configured",
+        message: "Missing TELEGRAM_BOT_TOKEN",
+      });
+    }
+
     // Handle Telegram webhook
     if (req.method === "POST") {
+      if (webhookSecret) {
+        const incomingSecret = req.headers["x-telegram-bot-api-secret-token"];
+        if (incomingSecret !== webhookSecret) {
+          return res.status(401).json({ ok: false, error: "Invalid webhook secret" });
+        }
+      }
+
       console.log("Webhook POST received at", new Date().toISOString());
 
       // Mask and log headers (avoid printing secrets)
@@ -175,14 +246,16 @@ export default async (
       const truncated = bodyStr.length > 1024 ? bodyStr.slice(0, 1024) + "...[truncated]" : bodyStr;
       console.log("Webhook body (truncated):", truncated);
 
-      const update: Update = req.body;
-      if (update) {
-        try {
-          await bot.handleUpdate(update);
-        } catch (err) {
-          console.error("bot.handleUpdate error:", err);
-          return res.status(500).json({ ok: false, error: String(err) });
-        }
+      const update = parseTelegramUpdate(req.body);
+      if (!update) {
+        return res.status(400).json({ ok: false, error: "Invalid Telegram update payload" });
+      }
+
+      try {
+        await bot.handleUpdate(update);
+      } catch (err) {
+        console.error("bot.handleUpdate error:", err);
+        return res.status(500).json({ ok: false, error: String(err) });
       }
 
       return res.status(200).json({ ok: true });
@@ -193,6 +266,7 @@ export default async (
       return res.status(200).json({
         status: "ok",
         message: "Tech News Bot webhook is running",
+        webhookSecretConfigured: Boolean(webhookSecret),
       });
     }
 
