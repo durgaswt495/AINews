@@ -13,6 +13,20 @@ interface DealSource {
 }
 
 const parser = new Parser({ timeout: 10000 });
+const defaultDealFeeds: DealSource[] = [
+  {
+    name: "DealDump Electronics",
+    url: "https://dealdump.com/category.php?cat=electronics&format=rss",
+  },
+  {
+    name: "DealDump Lightning Deals",
+    url: "https://dealdump.com/category.php?cat=deals-collection-lightning-deals&format=rss",
+  },
+  {
+    name: "DealDump Top 100",
+    url: "https://dealdump.com/category.php?cat=deals-collection-top-100&format=rss",
+  },
+];
 
 function getDealSources(): DealSource[] {
   const raw = process.env.DEAL_FEEDS || "";
@@ -20,6 +34,10 @@ function getDealSources(): DealSource[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+
+  if (urls.length === 0) {
+    return defaultDealFeeds;
+  }
 
   return urls.map((url, idx) => ({
     name: `Deal Feed ${idx + 1}`,
