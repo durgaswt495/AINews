@@ -85,34 +85,43 @@ export async function storeArticle(article: StoredArticle): Promise<void> {
   try {
     const config = getKVConfig();
     const ttl = 7 * 24 * 60 * 60; // 7 days in seconds
+    const generatedId = generateArticleId(article.title, article.source);
+    const primaryKey = article.id || generatedId;
+    const keysToPersist = Array.from(new Set([primaryKey, generatedId]));
 
     if (!config) {
       // Fallback to in-memory store
-      inMemoryStore.set(article.id, article);
-      console.log(`Stored article in memory: ${article.id}`);
+      for (const key of keysToPersist) {
+        inMemoryStore.set(key, article);
+      }
+      console.log(`Stored article in memory: ${keysToPersist.join(", ")}`);
       return;
     }
 
     try {
-      await axios.post(
-        `${config.url}/set/${article.id}`,
-        JSON.stringify(article),
-        {
-          headers: {
-            Authorization: `Bearer ${config.token}`,
-            "Content-Type": "application/json",
-          },
-          params: {
-            ex: ttl, // Set expiration time
-          },
-        }
-      );
+      for (const key of keysToPersist) {
+        await axios.post(
+          `${config.url}/set/${key}`,
+          JSON.stringify(article),
+          {
+            headers: {
+              Authorization: `Bearer ${config.token}`,
+              "Content-Type": "application/json",
+            },
+            params: {
+              ex: ttl, // Set expiration time
+            },
+          }
+        );
+      }
 
-      console.log(`Stored article: ${article.id}`);
+      console.log(`Stored article: ${keysToPersist.join(", ")}`);
     } catch (kvError) {
       console.error("KV store failed, falling back to in-memory store:", kvError);
-      inMemoryStore.set(article.id, article);
-      console.log(`Stored article in memory: ${article.id}`);
+      for (const key of keysToPersist) {
+        inMemoryStore.set(key, article);
+      }
+      console.log(`Stored article in memory: ${keysToPersist.join(", ")}`);
     }
   } catch (error) {
     console.error("Unexpected error storing article:", error);
