@@ -22,10 +22,12 @@ const sentimentEmoji = {
 
 export async function sendNewsToTelegram(
   news: NewsMessage[],
-  userLanguage?: string
-): Promise<void> {
-  if (!process.env.TELEGRAM_CHAT_ID) {
-    throw new Error("TELEGRAM_CHAT_ID not set");
+  userLanguage?: string,
+  targetChatId?: string
+): Promise<number> {
+  const chatId = targetChatId || process.env.TELEGRAM_CHAT_ID;
+  if (!chatId) {
+    throw new Error("TELEGRAM_CHAT_ID not set and no target chat provided");
   }
 
   // Filter news by user language if specified
@@ -38,7 +40,7 @@ export async function sendNewsToTelegram(
     console.log(
       `No articles found in user's language (${userLanguage}). Total available: ${news.length}`
     );
-    return;
+    return 0;
   }
 
   try {
@@ -51,7 +53,7 @@ export async function sendNewsToTelegram(
       `📰 *Tech News Update* 🇮🇳 (${new Date().toLocaleDateString()})${languageInfo}\n\n` +
       `Found ${filteredNews.length} new articles from your tech feeds.\n\n`;
 
-    await bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, header, {
+    await bot.telegram.sendMessage(chatId, header, {
       parse_mode: "Markdown",
     });
 
@@ -65,7 +67,7 @@ export async function sendNewsToTelegram(
         `*Summary:*\n${article.summary}\n\n` +
         (article.link ? `[Read Full Article](${article.link})` : "");
 
-      await bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, message, {
+      await bot.telegram.sendMessage(chatId, message, {
         parse_mode: "Markdown",
         link_preview_options: { is_disabled: true },
       });
@@ -89,11 +91,12 @@ export async function sendNewsToTelegram(
       `🔴 Negative: ${negativeCount}\n` +
       `🟡 Neutral: ${neutralCount}`;
 
-    await bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, footer, {
+    await bot.telegram.sendMessage(chatId, footer, {
       parse_mode: "Markdown",
     });
 
     console.log(`Successfully sent ${filteredNews.length} articles to Telegram`);
+    return filteredNews.length;
   } catch (error) {
     console.error("Error sending message to Telegram:", error);
     throw error;

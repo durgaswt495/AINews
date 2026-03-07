@@ -100,10 +100,14 @@ async function processArticleWithNLP(
  * Fetch and process news articles, then send to user
  * @param userId User's telegram ID (or broadcast chat ID for cron)
  */
-export async function fetchAndSendNews(userId: string): Promise<{
+export async function fetchAndSendNews(
+  userId: string,
+  targetChatId?: string
+): Promise<{
   success: boolean;
   articlesFetched: number;
   articlesProcessed: number;
+  articlesSent: number;
   message: string;
 }> {
   try {
@@ -130,6 +134,7 @@ export async function fetchAndSendNews(userId: string): Promise<{
         success: true,
         articlesFetched: 0,
         articlesProcessed: 0,
+        articlesSent: 0,
         message: "No articles fetched",
       };
     }
@@ -154,8 +159,13 @@ export async function fetchAndSendNews(userId: string): Promise<{
     const userLanguage = await getUserLanguage(userId);
 
     // Send to Telegram
+    let articlesSent = 0;
     if (newsToSend.length > 0) {
-      await sendNewsToTelegram(newsToSend, userLanguage);
+      articlesSent = await sendNewsToTelegram(
+        newsToSend,
+        userLanguage,
+        targetChatId
+      );
     } else {
       console.log("No new articles to send");
     }
@@ -164,6 +174,7 @@ export async function fetchAndSendNews(userId: string): Promise<{
       success: true,
       articlesFetched: allArticles.length,
       articlesProcessed: newsToSend.length,
+      articlesSent,
       message: "News cycle completed",
     };
   } catch (error) {

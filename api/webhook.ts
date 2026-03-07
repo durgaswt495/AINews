@@ -84,21 +84,24 @@ bot.command("stats", (ctx: Context) => {
 
 bot.command("news", async (ctx: Context) => {
   const userId = ctx.from?.id?.toString() || "default";
-  
+  const chatId = ctx.chat?.id?.toString() || userId;
+
   try {
-    await ctx.reply("🔄 Fetching fresh news for you...");
-    
+    await ctx.reply("Fetching fresh news for you...");
+
     const { fetchAndSendNews } = await import("../lib/news-fetcher.js");
-    const result = await fetchAndSendNews(userId);
-    
-    if (result.articlesProcessed > 0) {
-      await ctx.reply(`✅ Found ${result.articlesProcessed} new articles in your language!`);
+    const result = await fetchAndSendNews(userId, chatId);
+
+    if (result.articlesSent > 0) {
+      await ctx.reply(`Sent ${result.articlesSent} new articles in your language.`);
+    } else if (result.articlesProcessed > 0) {
+      await ctx.reply("Processed new articles, but none matched your selected language.");
     } else {
-      await ctx.reply("📭 No new articles at the moment. Try again later!");
+      await ctx.reply("No new articles at the moment. Try again later!");
     }
   } catch (error) {
     console.error("Error fetching news from webhook:", error);
-    await ctx.reply("❌ Sorry, couldn't fetch news right now. Please try again later.");
+    await ctx.reply("Sorry, couldn't fetch news right now. Please try again later.");
   }
 });
 
@@ -279,3 +282,4 @@ export default async (
     });
   }
 };
+
