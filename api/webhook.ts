@@ -43,7 +43,8 @@ bot.command("start", (ctx: Context) => {
       "/lang - Choose your language\n" +
       "/help - Show help message\n" +
       "/stats - Show statistics\n" +
-      "/news - Get latest news now"
+      "/news - Get latest news now\n" +
+      "/deals - Get latest deals now"
   );
 });
 
@@ -82,6 +83,29 @@ bot.command("stats", (ctx: Context) => {
   );
 });
 
+async function handleDealsCommand(ctx: Context): Promise<void> {
+  const userId = ctx.from?.id?.toString() || "default";
+  const chatId = ctx.chat?.id?.toString() || userId;
+
+  try {
+    await ctx.reply("Fetching best deals for you...");
+
+    const { fetchAndSendNews } = await import("../lib/news-fetcher.js");
+    const result = await fetchAndSendNews(userId, chatId);
+
+    if (result.articlesSent > 0) {
+      await ctx.reply(`Sent ${result.articlesSent} fresh deals.`);
+    } else if (result.articlesProcessed > 0) {
+      await ctx.reply("Processed deals, but none met the quality filters.");
+    } else {
+      await ctx.reply("No new qualified deals at the moment. Try again later.");
+    }
+  } catch (error) {
+    console.error("Error fetching deals from webhook:", error);
+    await ctx.reply("Sorry, couldn't fetch deals right now. Please try again later.");
+  }
+}
+
 bot.command("news", async (ctx: Context) => {
   const userId = ctx.from?.id?.toString() || "default";
   const chatId = ctx.chat?.id?.toString() || userId;
@@ -104,6 +128,8 @@ bot.command("news", async (ctx: Context) => {
     await ctx.reply("Sorry, couldn't fetch news right now. Please try again later.");
   }
 });
+
+bot.command("deals", handleDealsCommand);
 
 bot.command("lang", async (ctx: Context) => {
   const userId = ctx.from?.id?.toString() || "default";
@@ -168,13 +194,18 @@ bot.on("message", async (ctx: Context) => {
     return;
   }
 
+  if (normalized.includes("deal")) {
+    await ctx.reply("Use /deals to fetch the latest best deals right now.");
+    return;
+  }
+
   if (normalized.includes("news")) {
     await ctx.reply("Use /news to fetch the latest update right now.");
     return;
   }
 
   await ctx.reply(
-    "I'm a news bot. Use /help for commands, /lang to choose language, or /news for latest articles."
+    "I'm a news bot. Use /help for commands, /lang to choose language, /news for latest articles, or /deals for offers."
   );
 });
 
