@@ -16,12 +16,5 @@
       "path": "/api/fetch-news",
       "schedule": "0 0 * * *"
     }
-  ],
-  "env": {
-    "TELEGRAM_BOT_TOKEN": "@TELEGRAM_BOT_TOKEN",
-    "TELEGRAM_CHAT_ID": "@TELEGRAM_CHAT_ID",
-    "HF_TOKEN": "@HF_TOKEN",
-    "VERCEL_KV_URL": "@VERCEL_KV_URL",
-    "VERCEL_KV_REST_API_TOKEN": "@VERCEL_KV_REST_API_TOKEN"
-  }
+  ]
 }
