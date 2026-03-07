@@ -106,3 +106,29 @@ export async function fetchAmazonIndiaDeals(maxItems = 8): Promise<DealItem[]> {
 
   return unique.slice(0, maxItems);
 }
+
+export async function fetchAndSendDeals(): Promise<{
+  success: boolean;
+  dealsFetched: number;
+  dealsSelected: number;
+  telegramPosted: number;
+  whatsappPosted: number;
+  message: string;
+}> {
+  const maxItems = Number.parseInt(process.env.DAILY_DEALS_LIMIT || "8", 10);
+  const deals = await fetchAmazonIndiaDeals(maxItems);
+
+  return {
+    success: true,
+    dealsFetched: deals.length,
+    dealsSelected: deals.length,
+    telegramPosted: 0,
+    whatsappPosted: 0,
+    message: deals.length
+      ? "Deals fetched successfully"
+      : "No Amazon India deals found",
+  };
+}
+
+// Backward-compatible alias for typo variants used in some imports.
+export const fetchAndSendDetails = fetchAndSendDeals;
