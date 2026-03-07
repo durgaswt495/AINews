@@ -1,4 +1,6 @@
 import Parser from "rss-parser";
+import axios from "axios";
+import * as cheerio from "cheerio";
 
 export interface DealItem {
   title: string;
@@ -74,6 +76,56 @@ function uniqueByLink(items: DealItem[]): DealItem[] {
   return Array.from(byLink.values());
 }
 
+async function resolveAmazonIndiaLink(candidate?: string): Promise<string | undefined> {
+  if (!candidate) return undefined;
+
+  if (isAmazonIndiaLink(candidate)) {
+    return candidate;
+  }
+
+  try {
+    const response = await axios.get(candidate, {
+      timeout: 10000,
+      maxRedirects: 5,
+      validateStatus: (status) => status >= 200 && status < 400,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; DealBot/1.0)",
+      },
+    });
+
+    const finalUrl = response.request?.res?.responseUrl || candidate;
+    if (isAmazonIndiaLink(finalUrl)) {
+      return finalUrl;
+    }
+
+    const html = typeof response.data === "string" ? response.data : "";
+    if (!html) return undefined;
+
+    const $ = cheerio.load(html);
+    const hrefs = new Set<string>();
+
+    $("a[href]").each((_, element) => {
+      const href = $(element).attr("href");
+      if (href) hrefs.add(href);
+    });
+
+    for (const href of hrefs) {
+      try {
+        const absolute = new URL(href, finalUrl).toString();
+        if (isAmazonIndiaLink(absolute)) {
+          return absolute;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function fetchAmazonIndiaDeals(maxItems = 8): Promise<DealItem[]> {
   const sources = getDealSources();
   if (sources.length === 0) {
@@ -88,7 +140,8 @@ export async function fetchAmazonIndiaDeals(maxItems = 8): Promise<DealItem[]> {
       const deals: DealItem[] = [];
 
       for (const item of feed.items || []) {
-        if (!isAmazonIndiaLink(item.link)) {
+        const resolvedLink = await resolveAmazonIndiaLink(item.link);
+        if (!resolvedLink) {
           continue;
         }
 
@@ -97,7 +150,7 @@ export async function fetchAmazonIndiaDeals(maxItems = 8): Promise<DealItem[]> {
 
         deals.push({
           title,
-          link: item.link,
+          link: resolvedLink,
           source: source.name,
           priceInr: extractInrPrice(body),
         });
@@ -144,7 +197,7 @@ export async function fetchAndSendDeals(): Promise<{
     whatsappPosted: 0,
     message: deals.length
       ? "Deals fetched successfully"
-      : "No Amazon India deals found",
+      : "No Amazon India deals found in configured/default feeds",
   };
 }
 

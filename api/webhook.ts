@@ -120,7 +120,7 @@ bot.command("deals", async (ctx: Context) => {
 
     if (deals.length === 0) {
       await ctx.reply(
-        "No Amazon India deals found right now. Configure DEAL_FEEDS and try again."
+        "No Amazon India deals found right now in the configured/default feeds. Try again later."
       );
       return;
     }
