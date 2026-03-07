@@ -27,6 +27,10 @@ interface VercelResponse {
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || "");
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || "";
 
+function escapeMarkdownV2(input: string): string {
+  return input.replace(/[_*[\]()~`>#+=|{}.!-]/g, "\\$&");
+}
+
 /**
  * Handle incoming Telegram webhook updates
  * This allows for interactive commands like /help, /stats, etc.
@@ -43,7 +47,8 @@ bot.command("start", (ctx: Context) => {
       "/lang - Choose your language\n" +
       "/help - Show help message\n" +
       "/stats - Show statistics\n" +
-      "/news - Get latest news now"
+      "/news - Get latest news now\n" +
+      "/deals - Get latest Amazon India deals"
   );
 });
 
@@ -60,7 +65,7 @@ bot.command("help", (ctx: Context) => {
       "5. Analyzes sentiment (positive/negative/neutral)\n" +
       "6. Categorizes by tech topic (AI, Security, Web Dev, etc.)\n\n" +
       "*Update schedule:*\n" +
-      "📅 Every 6 hours (4 times daily) | Manual: /news\n\n" +
+      "📅 Every 6 hours (4 times daily) | Manual: /news or /deals\n\n" +
       "*Get Started:*\n" +
       "Send /lang to choose from 10+ languages including Hindi, Bengali, Tamil, Telugu, and more!\n\n" +
       "*Data sources:*\n" +
@@ -102,6 +107,47 @@ bot.command("news", async (ctx: Context) => {
   } catch (error) {
     console.error("Error fetching news from webhook:", error);
     await ctx.reply("Sorry, couldn't fetch news right now. Please try again later.");
+  }
+});
+
+bot.command("deals", async (ctx: Context) => {
+  try {
+    await ctx.reply("Fetching latest Amazon India deals...");
+
+    const { fetchAmazonIndiaDeals } = await import("../lib/deals-fetcher.js");
+    const maxItems = Number.parseInt(process.env.DAILY_DEALS_LIMIT || "8", 10);
+    const deals = await fetchAmazonIndiaDeals(maxItems);
+
+    if (deals.length === 0) {
+      await ctx.reply(
+        "No Amazon India deals found right now. Configure DEAL_FEEDS and try again."
+      );
+      return;
+    }
+
+    await ctx.reply(`Found ${deals.length} Amazon India deals:`);
+
+    for (const deal of deals) {
+      const escapedTitle = escapeMarkdownV2(deal.title);
+      const escapedSource = escapeMarkdownV2(deal.source);
+      const priceText =
+        typeof deal.priceInr === "number" ? `\u20B9${deal.priceInr.toLocaleString("en-IN")}` : "N/A";
+
+      const message = [
+        `*${escapedTitle}*`,
+        `Source: ${escapedSource}`,
+        `Price: ${priceText}`,
+        `[Buy on Amazon\\.in](${deal.link})`,
+      ].join("\n");
+
+      await ctx.reply(message, {
+        parse_mode: "MarkdownV2",
+        link_preview_options: { is_disabled: true },
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching deals from webhook:", error);
+    await ctx.reply("Sorry, couldn't fetch deals right now. Please try again later.");
   }
 });
 
@@ -173,8 +219,13 @@ bot.on("message", async (ctx: Context) => {
     return;
   }
 
+  if (normalized.includes("deal")) {
+    await ctx.reply("Use /deals to fetch latest Amazon India deals.");
+    return;
+  }
+
   await ctx.reply(
-    "I'm a news bot. Use /help for commands, /lang to choose language, or /news for latest articles."
+    "I'm a news and deals bot. Use /news for tech news or /deals for Amazon India deals."
   );
 });
 
@@ -282,4 +333,5 @@ export default async (
     });
   }
 };
+
 
