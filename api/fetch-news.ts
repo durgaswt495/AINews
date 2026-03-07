@@ -1,15 +1,5 @@
-import Parser from "rss-parser";
-import { newsSources } from "../lib/news-sources.js";
-import { processArticle } from "../lib/huggingface-client.js";
 import { sendErrorAlert } from "../lib/telegram-service.js";
-import {
-  articleExists,
-  storeArticle,
-  StoredArticle,
-  getUserLanguage,
-} from "../lib/vercel-kv.js";
-import { fetchAndSendNews } from "../lib/news-fetcher.js";
-import axios from "axios";
+import { fetchAndSendDeals } from "../lib/deals-fetcher.js";
 
 // Vercel serverless function types
 interface VercelRequest {
@@ -33,23 +23,23 @@ export default async (
   const isAuthorized =
     authHeader === `Bearer ${process.env.CRON_SECRET}` ||
     req.query.token === process.env.CRON_SECRET ||
-    true;
+    process.env.NODE_ENV !== "production";
 
   if (!isAuthorized) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
-    console.log("Starting scheduled news fetch cycle...");
-    
-    const userId = process.env.TELEGRAM_CHAT_ID || "default";
-    const result = await fetchAndSendNews(userId);
+    console.log("Starting scheduled deals publish cycle...");
+    const result = await fetchAndSendDeals();
 
     return res.status(200).json({
       success: result.success,
       message: result.message,
-      articlesFetched: result.articlesFetched,
-      articlesProcessed: result.articlesProcessed,
+      dealsFetched: result.dealsFetched,
+      dealsSelected: result.dealsSelected,
+      telegramPosted: result.telegramPosted,
+      whatsappPosted: result.whatsappPosted,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -57,13 +47,13 @@ export default async (
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     try {
-      await sendErrorAlert(`Failed to fetch news: ${errorMessage}`);
+      await sendErrorAlert(`Failed to publish deals: ${errorMessage}`);
     } catch (telegramError) {
       console.error("Failed to send error alert:", telegramError);
     }
 
     return res.status(500).json({
-      error: "Failed to fetch and process news",
+      error: "Failed to fetch and publish deals",
       details: errorMessage,
       timestamp: new Date().toISOString(),
     });

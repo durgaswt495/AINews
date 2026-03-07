@@ -87,6 +87,29 @@ bot.command("stats", (ctx: Context) => {
   );
 });
 
+async function handleDealsCommand(ctx: Context): Promise<void> {
+  const userId = ctx.from?.id?.toString() || "default";
+  const chatId = ctx.chat?.id?.toString() || userId;
+
+  try {
+    await ctx.reply("Fetching best deals for you...");
+
+    const { fetchAndSendNews } = await import("../lib/news-fetcher.js");
+    const result = await fetchAndSendNews(userId, chatId);
+
+    if (result.articlesSent > 0) {
+      await ctx.reply(`Sent ${result.articlesSent} fresh deals.`);
+    } else if (result.articlesProcessed > 0) {
+      await ctx.reply("Processed deals, but none met the quality filters.");
+    } else {
+      await ctx.reply("No new qualified deals at the moment. Try again later.");
+    }
+  } catch (error) {
+    console.error("Error fetching deals from webhook:", error);
+    await ctx.reply("Sorry, couldn't fetch deals right now. Please try again later.");
+  }
+}
+
 bot.command("news", async (ctx: Context) => {
   const userId = ctx.from?.id?.toString() || "default";
   const chatId = ctx.chat?.id?.toString() || userId;
@@ -211,6 +234,11 @@ bot.on("message", async (ctx: Context) => {
     await ctx.reply(
       `${info.flag} Language updated to ${info.name} (${info.script}).`
     );
+    return;
+  }
+
+  if (normalized.includes("deal")) {
+    await ctx.reply("Use /deals to fetch the latest best deals right now.");
     return;
   }
 
